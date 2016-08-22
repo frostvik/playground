@@ -10,7 +10,7 @@ basefn = 'put base name here'
 def createdate(line):
     datefromfile = line.split()[0].split('[')[1].__str__()
     # map the var to a date type and tell it the format
-    thedate = datetime.datetime.strptime(datefromfile, '%Y-%m-%d')
+    thedate = datetime.datetime.strptime(datefromfile, '%Y-%m-%d').date()
     # convert it to a string in a different format
     newdate = datetime.date.strftime(thedate, '%Y%m%d')
 
