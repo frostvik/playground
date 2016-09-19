@@ -1,6 +1,7 @@
 #
 #USAGE
 #.\getvmbymac.ps1 myvCenter.info Administrator@ddtest.info mypassword 00:50:56:4b:29:33
+# one line Get-VM | Where-Object { $_ | get-networkadapter | Where-Object { $_.MacAddress -like '00:50:56:ba:c5:28'} }
 #
 
 [CmdletBinding()]
