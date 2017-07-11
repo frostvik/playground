@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Script for parsing log files
 #  and appends VM hostname and date to filename
 import datetime
@@ -5,8 +6,9 @@ import os
 
 # olddate = datetime.date.today()
 # if needed, range for digits regex: \d{4,7}
-path = 'put path here'
-basefn = 'put base name here'
+path = '/root'
+# basen is the name of the files you want to change
+basen = 'log1'
 
 # Function to change date format
 def createdate(l):
