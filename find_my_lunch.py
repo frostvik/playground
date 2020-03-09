@@ -4,24 +4,19 @@ import csv
 import re
 import argparse
 
+rest = []
 find_lunch = argparse.ArgumentParser(description='Generate a list of open restaurants')
-find_lunch.add_argument('-d', '--day', help='day restaurants are  open')
+group = find_lunch.add_mutually_exclusive_group(required=True)
+group.add_argument('-d', '--day', help='day restaurants are  open')
 find_lunch.add_argument('-t', '--time', help='hour to test against')
-find_lunch.add_argument('-n', '--now', help='get open restaurants at this hour', action='store_true')
+group.add_argument('-n', '--now', help='get open restaurants at this hour', action='store_true')
 myargs = find_lunch.parse_args()
 
 # add arguments to variables
-input_day = myargs.day
-input_hour = myargs.time
 if myargs.now:
     input_now = datetime.now()
-
-rest = []
-# a = "Kushi Tsuru,Mon-Sun 11:30 am - 9 pm"
-# a = 'Restaurant Lulu,"Mon-Thu, Sun 11:30 am - 9 pm  / Fri-Sat 11:30 am - 10 pm"'
-# a = "The Cheesecake Factory,Mon-Thu 11 am - 11 pm  / Fri-Sat 11 am - 12:30 am  / Sun 10 am - 11 pm"
-
-# https://strftime.org for strftime/strptime formatting
+else:
+    input_now = myargs.day
 
 
 def match_starttime(timestring):
@@ -93,49 +88,64 @@ def parse_start_and_close(timestring):
             return opentime, closetime
 
 
-with open('restaurants.csv') as csvfile:
-    csvread = csv.reader(csvfile, delimiter=',', quotechar='"')
-    for row in csvread:
-        if '/' in row[1]:
-            timeranges = [r.strip() for r in row[1].split('/')]
-            for timerange in timeranges:
-                if re.search(r'([a-zA-Z]{3})-([a-zA-Z]{3})', timerange):
-                    timecommas = [r.strip() for r in timerange.split(',')]
-                    if len(timecommas) >= 2:
-                        timecommas[0] = f'{timecommas[0]}{re.split(r"([a-zA-Z]{3})", timecommas[1])[2]}'
-                        # don't know how to comprehend
-                        for timecomma in timecommas:
-                            opentime, closetime = parse_start_and_close(timecomma)
-                            # print(f"{opentime.strftime('%A %H:%M')} {closetime.strftime('%A %H:%M')} {row[0]}")
-                            rest.append({'name': row[0], 'start_time': opentime, 'end_time': closetime, 'open_days': days_open(timecomma)})
-                    else:
-                        opentime, closetime = parse_start_and_close(timecommas[0])
-                        # print(f"{opentime.strftime('%A %H:%M')} {closetime.strftime('%A %H:%M')} {row[0]}")
-                        rest.append({'name': row[0], 'start_time': opentime, 'end_time': closetime, 'open_days': days_open(timecommas[0])})
-                elif re.search(r'([a-zA-Z]{3})', timerange):
-                    # this particular case does not exist in the csv, for ex: Sat 11 am - 11 pm, Sun 11 am - 10 pm
-                    timecommas = [r.strip() for r in timerange.split(',')]
-                    if len(timecommas) == 2:
-                        timecommas[0] = f'{timecommas[0]}{re.split(r"([a-zA-Z]{3})", timecommas[1])[2]}'
-                        for timecomma in timecommas:
-                            opentime, closetime = parse_start_and_close(timecomma)
-                            # print(f"{opentime.strftime('%A %H:%M')} {closetime.strftime('%A %H:%M')} {row[0]}")
-                            rest.append({'name': row[0], 'start_time': opentime, 'end_time': closetime, 'open_days': days_open(timecomma)})
-                    else:
-                        opentime, closetime = parse_start_and_close(timecommas[0])
-                        # print(f"{opentime.strftime('%A %H:%M')} {closetime.strftime('%A %H:%M')} {row[0]}")
-                        rest.append({'name': row[0], 'start_time': opentime, 'end_time': closetime, 'open_days': days_open(timecommas[0])})
-        else:
-            timecommas = [r.strip() for r in row[1].split(',')]
-            if len(timecommas) >= 2:
-                timecommas[0] = f'{timecommas[0]}{re.split(r"([a-zA-Z]{3}-[a-zA-Z]{3})", timecommas[1])[2]}'
-                for timecomma in timecommas:
-                    opentime, closetime = parse_start_and_close(timecomma)
-                    # print(f"{opentime.strftime('%A %H:%M')} {closetime.strftime('%A %H:%M')} {row[0]}")
-                    rest.append({'name': row[0], 'start_time': opentime, 'end_time': closetime, 'open_days': days_open(timecomma)})
+def get_rest_params(name, timestring):
+    opent, closet = parse_start_and_close(timestring)
+    return rest.append({'name': name, 'start_time': opent, 'end_time': closet, 'open_days': days_open(timestring)})
 
+
+def compose_rest_dict():
+    with open('restaurants.csv') as csvfile:
+        csvread = csv.reader(csvfile, delimiter=',', quotechar='"')
+        for row in csvread:
+            if '/' in row[1]:
+                timeranges = [r.strip() for r in row[1].split('/')]
+                for timerange in timeranges:
+                    if re.search(r'([a-zA-Z]{3})-([a-zA-Z]{3})', timerange):
+                        timecommas = [r.strip() for r in timerange.split(',')]
+                        if len(timecommas) >= 2:
+                            timecommas[0] = f'{timecommas[0]}{re.split(r"([a-zA-Z]{3})", timecommas[1])[2]}'
+                            for timecomma in timecommas:
+                                # initially was:
+                                # opentime, closetime = parse_start_and_close(timecomma)
+                                # rest.append({'name': row[0], 'start_time': opentime, 'end_time': closetime, 'open_days': days_open(timecomma)})
+                                get_rest_params(row[0], timecomma)
+                        else:
+                            get_rest_params(row[0], timecommas[0])
+                    elif re.search(r'([a-zA-Z]{3},)', timerange):
+                        # this particular case does not exist in the csv, for ex: Mon-Fri 10 am - 10 pm / Sat,Sun 11 am - 10 pm
+                        timecommas = [r.strip() for r in timerange.split(',')]
+                        if len(timecommas) == 2:
+                            timecommas[0] = f'{timecommas[0]}{re.split(r"([a-zA-Z]{3})", timecommas[1])[2]}'
+                            for timecomma in timecommas:
+                                get_rest_params(row[0], timecomma)
+                        else:
+                            get_rest_params(row[0], timecommas[0])
             else:
-                opentime, closetime = parse_start_and_close(row[1])
-                # print(f"{opentime.strftime('%A %H:%M')} {closetime.strftime('%A %H:%M')} {row[0]}")
-                rest.append({'name': row[0], 'start_time': opentime, 'end_time': closetime, 'open_days': days_open(row[1])})
-print(rest)
+                timecommas = [r.strip() for r in row[1].split(',')]
+                if len(timecommas) >= 2:
+                    timecommas[0] = f'{timecommas[0]}{re.split(r"([a-zA-Z]{3}-[a-zA-Z]{3})", timecommas[1])[2]}'
+                    for timecomma in timecommas:
+                        get_rest_params(row[0], timecomma)
+                else:
+                    get_rest_params(row[0], row[1])
+    return rest
+
+
+def get_open_rest():
+    i = 0
+    open_rest = []
+    for r in compose_rest_dict():
+        while r['open_days'] >= 0:
+            day = r['start_time'] + timedelta(days=i)
+            if datetime.strftime(input_now, '%a') in datetime.strftime(day, '%a'):
+                if time(7, 1) <= datetime.time(r['end_time']) <= time(23, 59) and datetime.time(r['start_time']) <= datetime.time(input_now) <= datetime.time(r['end_time']):
+                    open_rest.append(r['name'])
+                elif time(0) <= datetime.time(r['end_time']) <= time(7) and time(0) <= datetime.time(input_now) <= datetime.time(r['end_time']):
+                    open_rest.append(r['name'])
+            r['open_days'] -= 1
+            i += 1
+    open_rest = list(set(open_rest))
+    return open_rest
+
+
+print(get_open_rest())
